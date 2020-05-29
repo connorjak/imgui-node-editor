@@ -58,6 +58,14 @@ enum class PinType
     Object,
     Function,
     Delegate,
+
+    USBA,
+    USBB,
+    USBC,
+    DisplayPort,
+    HDMI,
+    Audio3_5mm,
+    DC_Power_Barrel
 };
 
 enum class PinKind
@@ -271,6 +279,25 @@ static void BuildNode(Node* node)
         output.Node = node;
         output.Kind = PinKind::Output;
     }
+}
+
+static Node* SpawnATEN_KVM()
+{
+    s_Nodes.emplace_back(GetNextId(), "ATEN KVM", ImColor(255, 128, 128));
+    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp1 USBB", PinType::USBB);
+    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp1 DP 1.2", PinType::DisplayPort);
+    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp1 Audio In", PinType::Audio3_5mm);
+    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp2 USBB", PinType::USBB);
+    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp2 DP 1.2", PinType::DisplayPort);
+    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp2 Audio In", PinType::Audio3_5mm);
+    s_Nodes.back().Outputs.emplace_back(GetNextId(), "DP 1.2", PinType::DisplayPort);
+    s_Nodes.back().Outputs.emplace_back(GetNextId(), "USB 2.0", PinType::USBA);
+    s_Nodes.back().Outputs.emplace_back(GetNextId(), "USB 2.0", PinType::USBA);
+    s_Nodes.back().Outputs.emplace_back(GetNextId(), "Audio Out", PinType::Audio3_5mm);
+
+    BuildNode(&s_Nodes.back());
+
+    return &s_Nodes.back();
 }
 
 static Node* SpawnInputActionNode()
@@ -521,6 +548,7 @@ void Application_Initialize()
     ed::SetCurrentEditor(m_Editor);
 
     Node* node;
+    node = SpawnATEN_KVM();             ed::SetNodePosition(node->ID, ImVec2(-252, 170));
     node = SpawnInputActionNode();      ed::SetNodePosition(node->ID, ImVec2(-252, 220));
     node = SpawnBranchNode();           ed::SetNodePosition(node->ID, ImVec2(-300, 351));
     node = SpawnDoNNode();              ed::SetNodePosition(node->ID, ImVec2(-238, 504));
