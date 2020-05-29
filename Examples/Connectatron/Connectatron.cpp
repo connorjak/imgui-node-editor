@@ -1654,6 +1654,8 @@ void Application_Frame()
         //drawList->AddCircleFilled(ImGui::GetMousePosOnOpeningCurrentPopup(), 10.0f, 0xFFFF00FF);
 
         Node* node = nullptr;
+        if (ImGui::MenuItem("ATEN KVM"))
+            node = SpawnATEN_KVM();
         if (ImGui::MenuItem("Input Action"))
             node = SpawnInputActionNode();
         if (ImGui::MenuItem("Output Action"))
