@@ -12,6 +12,13 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
 
+//https://stackoverflow.com/questions/201593/is-there-a-simple-way-to-convert-c-enum-to-string/238157#238157
+//https://stackoverflow.com/questions/28828957/enum-to-string-in-modern-c11-c14-c17-and-future-c20
+
+#include <magic_enum.hpp>
+
+enum Color { RED = 2, BLUE = 4, GREEN = 8 };
+
 static inline ImRect ImGui_GetItemRect()
 {
     return ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
@@ -48,6 +55,100 @@ static ed::EditorContext* m_Editor = nullptr;
 //        return false;
 //}
 
+// *** RESEARCH ***
+
+// https://en.wikipedia.org/wiki/Computer_port_(hardware)#Types_of_ports
+// https://en.wikipedia.org/wiki/Serial_ATA#eSATA
+
+//Power
+// https://en.wikipedia.org/wiki/Molex_connector
+
+//USB
+// https://en.wikipedia.org/wiki/USB#Connectors
+// https://www.sony.com/electronics/support/articles/00024571
+// https://www.computerlanguage.com/results.php?definition=USB+3.2+Gen+1x2
+// https://en.wikipedia.org/wiki/USB_3.0
+// https://www.tripplite.com/products/usb-connectivity-types-standards
+
+// Display
+// https://en.wikipedia.org/wiki/DisplayPort
+// https://en.wikipedia.org/wiki/VGA_connector
+
+
+enum class WireProtocol
+{
+    // Power
+    DC_Power,
+    AC_Power,
+
+    // Single-Wire
+    UART,
+    SPI,
+    I2C,
+
+    // USB
+    USB1_0, //Low-Speed: 1.5 Mbps
+    USB1_1, //Full-Speed: 12 Mbps
+    USB2_0, //Hi-Speed: 480 Mbps
+    USB3_0_5g, //SuperSpeed: 5 Gbps
+    USB3_0_10g, //SuperSpeed+: 10 Gbps
+    USB3_0_20g, //SuperSpeed 20 Gbps
+
+    // Display
+    DisplayPort1_0,
+    DisplayPort1_1,
+    DisplayPort1_2,
+    DisplayPort1_2a, //Adaptive Sync support
+    DisplayPort1_3,
+    DisplayPort1_4,
+    DisplayPort1_4a,
+    DisplayPort2_0,
+    HDMI,
+    DVI_D, //Digital
+    DVI_A, //Analog
+    DVI_I, //Combined
+
+    // Other
+    Thunderbolt3
+};
+
+const std::vector<WireProtocol> BackCompat_USB2_0 = {
+    WireProtocol::USB1_0, //Low-Speed: 1.5 Mbps
+    WireProtocol::USB1_1, //Full-Speed: 12 Mbps
+    WireProtocol::USB2_0, //Hi-Speed: 480 Mbps
+};
+
+const std::vector<WireProtocol> BackCompat_USB3_0 = {
+    WireProtocol::USB1_0, //Low-Speed: 1.5 Mbps
+    WireProtocol::USB1_1, //Full-Speed: 12 Mbps
+    WireProtocol::USB2_0, //Hi-Speed: 480 Mbps
+    WireProtocol::USB3_0_5g, //SuperSpeed: 5 Gbps
+};
+
+const std::vector<WireProtocol> BackCompat_USB3_0_5g = {
+    WireProtocol::USB1_0, //Low-Speed: 1.5 Mbps
+    WireProtocol::USB1_1, //Full-Speed: 12 Mbps
+    WireProtocol::USB2_0, //Hi-Speed: 480 Mbps
+    WireProtocol::USB3_0_5g, //SuperSpeed: 5 Gbps
+};
+
+const std::vector<WireProtocol> BackCompat_DisplayPort1_2a = { 
+    WireProtocol::DisplayPort1_0,
+    WireProtocol::DisplayPort1_1,
+    WireProtocol::DisplayPort1_2,
+    WireProtocol::DisplayPort1_2a,
+};
+
+const std::vector<WireProtocol> BackCompat_DisplayPort1_4a = {
+    WireProtocol::DisplayPort1_0,
+    WireProtocol::DisplayPort1_1,
+    WireProtocol::DisplayPort1_2,
+    WireProtocol::DisplayPort1_2a,
+    WireProtocol::DisplayPort1_3,
+    WireProtocol::DisplayPort1_4,
+    WireProtocol::DisplayPort1_4a, 
+};
+
 enum class PinType
 {
     Flow,
@@ -59,13 +160,45 @@ enum class PinType
     Function,
     Delegate,
 
+    //Power
+    DC_Power_Barrel, //TODO specific
+    Molex,
+    SATA_Power,
+    SATA_Power_Slimline,
+
+    //USB
     USBA,
     USBB,
     USBC,
+    USB_MiniA,
+    USB_MiniB,
+    USB_MiniAB,
+    USB_MicroA,
+    USB_MicroB,
+    USB_MicroAB,
+    USB_MicroB_SuperSpeed,
+
+    //Display
     DisplayPort,
+    MiniDisplayPort,
     HDMI,
+    MiniHDMI,
+    MicroHDMI,
+    DVI,
+    VGA,
+
+    //Audio
     Audio3_5mm,
-    DC_Power_Barrel
+    XLR, //?
+
+    //Other
+    SATA,
+    MicroSATA,
+    eSATA,
+    RJ45,
+
+
+    
 };
 
 enum class PinKind
@@ -90,11 +223,28 @@ struct Pin
     ed::PinId   ID;
     ::Node* Node;
     std::string Name;
+    // Physical connector type
     PinType     Type;
+    // Protocols available for communication through this connector
+    std::vector<WireProtocol> Protocols;
+    std::string ExtraInfo;
+    bool IsFemale = true;
     PinKind     Kind;
 
     Pin(int id, const char* name, PinType type) :
         ID(id), Node(nullptr), Name(name), Type(type), Kind(PinKind::Input)
+    {
+    }
+    Pin(int id, const char* name, PinType type, std::vector<WireProtocol> protocols) :
+        ID(id), Node(nullptr), Name(name), Type(type), Protocols(protocols), Kind(PinKind::Input)
+    {
+    }
+    Pin(int id, const char* name, PinType type, std::vector<WireProtocol> protocols, std::string extraInfo) :
+        ID(id), Node(nullptr), Name(name), Type(type), Protocols(protocols), ExtraInfo(extraInfo), Kind(PinKind::Input)
+    {
+    }
+    Pin(int id, const char* name, PinType type, std::vector<WireProtocol> protocols, std::string extraInfo, bool isFemale) :
+        ID(id), Node(nullptr), Name(name), Type(type), Protocols(protocols), ExtraInfo(extraInfo), IsFemale(isFemale), Kind(PinKind::Input)
     {
     }
 };
@@ -168,6 +318,134 @@ static ed::LinkId GetNextLinkId()
 {
     return ed::LinkId(GetNextId());
 }
+
+#define IM_COLOR_BLUE       ImColor(51, 150, 215)
+#define IM_COLOR_RED        ImColor(220, 48, 48)
+#define IM_COLOR_MAGENTA    ImColor(218, 0, 183)
+#define IM_COLOR_GREEN      ImColor(147, 226, 74)
+
+ImColor GetIconColor(PinType type)
+{
+    switch (type)
+    {
+    default:
+    case PinType::Flow:     return ImColor(255, 255, 255);
+    case PinType::Bool:     return ImColor(220, 48, 48);
+    case PinType::Int:      return ImColor(68, 201, 156);
+    case PinType::Float:    return ImColor(147, 226, 74);
+    case PinType::String:   return ImColor(124, 21, 153);
+    case PinType::Object:   return ImColor(51, 150, 215);
+    case PinType::Function: return ImColor(218, 0, 183);
+    case PinType::Delegate: return ImColor(255, 48, 48);
+
+        //Power
+    case PinType::DC_Power_Barrel:          return ImColor(255, 255, 255);
+    case PinType::Molex:                    return ImColor(255, 255, 255);
+    case PinType::SATA_Power:               return ImColor(255, 255, 255);
+    case PinType::SATA_Power_Slimline:      return ImColor(255, 255, 255);
+                                            
+        //USB                               
+    case PinType::USBA:                     return IM_COLOR_BLUE;
+    case PinType::USBB:                     return IM_COLOR_BLUE;
+    case PinType::USBC:                     return IM_COLOR_BLUE;
+    case PinType::USB_MiniA:                return IM_COLOR_BLUE;
+    case PinType::USB_MiniB:                return IM_COLOR_BLUE;
+    case PinType::USB_MiniAB:               return IM_COLOR_BLUE;
+    case PinType::USB_MicroA:               return IM_COLOR_BLUE;
+    case PinType::USB_MicroB:               return IM_COLOR_BLUE;
+    case PinType::USB_MicroAB:              return IM_COLOR_BLUE;
+    case PinType::USB_MicroB_SuperSpeed:    return IM_COLOR_BLUE;
+                                            
+        //Display                           
+    case PinType::DisplayPort:              return IM_COLOR_MAGENTA;
+    case PinType::MiniDisplayPort:          return IM_COLOR_MAGENTA;
+    case PinType::HDMI:                     return IM_COLOR_MAGENTA;
+    case PinType::MiniHDMI:                 return IM_COLOR_MAGENTA;
+    case PinType::MicroHDMI:                return IM_COLOR_MAGENTA;
+    case PinType::DVI:                      return IM_COLOR_MAGENTA;
+    case PinType::VGA:                      return IM_COLOR_MAGENTA;
+                                            
+        //Audio                             
+    case PinType::Audio3_5mm:               return IM_COLOR_GREEN;
+    case PinType::XLR:                      return IM_COLOR_GREEN;
+                                            
+        //Other                             
+    case PinType::SATA:                     return IM_COLOR_RED;
+    case PinType::MicroSATA:                return IM_COLOR_RED;
+    case PinType::eSATA:                    return IM_COLOR_RED;
+    case PinType::RJ45:                     return IM_COLOR_RED;
+    }
+};
+
+void DrawPinIcon(const Pin& pin, bool connected, int alpha)
+{
+    IconType iconType;
+    ImColor  color = GetIconColor(pin.Type);
+    color.Value.w = alpha / 255.0f;
+    switch (pin.Type)
+    {
+    case PinType::Flow:     iconType = IconType::Flow;   break;
+    case PinType::Bool:     iconType = IconType::Circle; break;
+    case PinType::Int:      iconType = IconType::Circle; break;
+    case PinType::Float:    iconType = IconType::Circle; break;
+    case PinType::String:   iconType = IconType::Circle; break;
+    case PinType::Object:   iconType = IconType::Circle; break;
+    case PinType::Function: iconType = IconType::Circle; break;
+    case PinType::Delegate: iconType = IconType::Square; break;
+
+
+    //case PinType::DisplayPort: iconType = IconType::Grid; break;
+    //case PinType::Audio3_5mm: iconType = IconType::Diamond; break;
+    //case PinType::USBA: iconType = IconType::Square; break;
+    //case PinType::USBB: iconType = IconType::RoundSquare; break;
+    //case PinType::USBC: iconType = IconType::Flow; break;
+    //case PinType::DC_Power_Barrel: iconType = IconType::Grid; break;
+    //case PinType::HDMI: iconType = IconType::Circle; break;
+    //case PinType::RJ45: iconType = IconType::Circle; break;
+    
+    //Power
+    case PinType::DC_Power_Barrel:          iconType = IconType::Flow; break;
+    case PinType::Molex:                    iconType = IconType::Flow; break;
+    case PinType::SATA_Power:               iconType = IconType::Flow; break;
+    case PinType::SATA_Power_Slimline:      iconType = IconType::Flow; break;
+    
+    //USB                                   
+    case PinType::USBA:                     iconType = IconType::Circle; break;
+    case PinType::USBB:                     iconType = IconType::Circle; break;
+    case PinType::USBC:                     iconType = IconType::Circle; break;
+    case PinType::USB_MiniA:                iconType = IconType::Circle; break;
+    case PinType::USB_MiniB:                iconType = IconType::Circle; break;
+    case PinType::USB_MiniAB:               iconType = IconType::Circle; break;
+    case PinType::USB_MicroA:               iconType = IconType::Circle; break;
+    case PinType::USB_MicroB:               iconType = IconType::Circle; break;
+    case PinType::USB_MicroAB:              iconType = IconType::Circle; break;
+    case PinType::USB_MicroB_SuperSpeed:    iconType = IconType::Circle; break;
+                                            
+    //Display                               
+    case PinType::DisplayPort:              iconType = IconType::Grid; break;
+    case PinType::MiniDisplayPort:          iconType = IconType::Grid; break;
+    case PinType::HDMI:                     iconType = IconType::Grid; break;
+    case PinType::MiniHDMI:                 iconType = IconType::Grid; break;
+    case PinType::MicroHDMI:                iconType = IconType::Grid; break;
+    case PinType::DVI:                      iconType = IconType::Grid; break;
+    case PinType::VGA:                      iconType = IconType::Grid; break;
+                                            
+    //Audio                                 
+    case PinType::Audio3_5mm:               iconType = IconType::Diamond; break;
+    case PinType::XLR:                      iconType = IconType::Diamond; break;
+                                            
+    //Other                                 
+    case PinType::SATA:                     iconType = IconType::Circle; break;
+    case PinType::MicroSATA:                iconType = IconType::Circle; break;
+    case PinType::eSATA:                    iconType = IconType::Circle; break;
+    case PinType::RJ45:                     iconType = IconType::Circle; break;
+
+    default:
+        return;
+    }
+
+    ax::Widgets::Icon(ImVec2(s_PinIconSize, s_PinIconSize), iconType, connected, color, ImColor(32, 32, 32, alpha));
+};
 
 static void TouchNode(ed::NodeId id)
 {
@@ -284,16 +562,28 @@ static void BuildNode(Node* node)
 static Node* SpawnATEN_KVM()
 {
     s_Nodes.emplace_back(GetNextId(), "ATEN KVM", ImColor(255, 128, 128));
-    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp1 USBB", PinType::USBB);
-    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp1 DP 1.2", PinType::DisplayPort);
+    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp1 USBB", PinType::USBB, BackCompat_USB2_0 );
+    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp1 DP 1.2", PinType::DisplayPort, BackCompat_DisplayPort1_2a);
     s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp1 Audio In", PinType::Audio3_5mm);
-    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp2 USBB", PinType::USBB);
-    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp2 DP 1.2", PinType::DisplayPort);
+    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp2 USBB", PinType::USBB, BackCompat_USB2_0);
+    s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp2 DP 1.2", PinType::DisplayPort, BackCompat_DisplayPort1_2a);
     s_Nodes.back().Inputs.emplace_back(GetNextId(), "Comp2 Audio In", PinType::Audio3_5mm);
-    s_Nodes.back().Outputs.emplace_back(GetNextId(), "DP 1.2", PinType::DisplayPort);
-    s_Nodes.back().Outputs.emplace_back(GetNextId(), "USB 2.0", PinType::USBA);
-    s_Nodes.back().Outputs.emplace_back(GetNextId(), "USB 2.0", PinType::USBA);
+
+    s_Nodes.back().Outputs.emplace_back(GetNextId(), "DP 1.2", PinType::DisplayPort, BackCompat_DisplayPort1_2a);
+    s_Nodes.back().Outputs.emplace_back(GetNextId(), "USB 2.0", PinType::USBA, BackCompat_USB2_0, "Has Keyboard HID commands.");
+    s_Nodes.back().Outputs.emplace_back(GetNextId(), "USB 2.0", PinType::USBA, BackCompat_USB2_0, "Has Mouse HID commands.");
     s_Nodes.back().Outputs.emplace_back(GetNextId(), "Audio Out", PinType::Audio3_5mm);
+
+    BuildNode(&s_Nodes.back());
+
+    return &s_Nodes.back();
+}
+
+static Node* SpawnUSBAtoUSBB()
+{
+    s_Nodes.emplace_back(GetNextId(), "USBAtoUSBB");
+    s_Nodes.back().Inputs.emplace_back(GetNextId(), "USBA", PinType::USBA);
+    s_Nodes.back().Outputs.emplace_back(GetNextId(), "USBB", PinType::USBB);
 
     BuildNode(&s_Nodes.back());
 
@@ -620,44 +910,6 @@ static bool Splitter(bool split_vertically, float thickness, float* size1, float
     bb.Max = bb.Min + CalcItemSize(split_vertically ? ImVec2(thickness, splitter_long_axis_size) : ImVec2(splitter_long_axis_size, thickness), 0.0f, 0.0f);
     return SplitterBehavior(bb, id, split_vertically ? ImGuiAxis_X : ImGuiAxis_Y, size1, size2, min_size1, min_size2, 0.0f);
 }
-
-ImColor GetIconColor(PinType type)
-{
-    switch (type)
-    {
-    default:
-    case PinType::Flow:     return ImColor(255, 255, 255);
-    case PinType::Bool:     return ImColor(220, 48, 48);
-    case PinType::Int:      return ImColor(68, 201, 156);
-    case PinType::Float:    return ImColor(147, 226, 74);
-    case PinType::String:   return ImColor(124, 21, 153);
-    case PinType::Object:   return ImColor(51, 150, 215);
-    case PinType::Function: return ImColor(218, 0, 183);
-    case PinType::Delegate: return ImColor(255, 48, 48);
-    }
-};
-
-void DrawPinIcon(const Pin& pin, bool connected, int alpha)
-{
-    IconType iconType;
-    ImColor  color = GetIconColor(pin.Type);
-    color.Value.w = alpha / 255.0f;
-    switch (pin.Type)
-    {
-    case PinType::Flow:     iconType = IconType::Flow;   break;
-    case PinType::Bool:     iconType = IconType::Circle; break;
-    case PinType::Int:      iconType = IconType::Circle; break;
-    case PinType::Float:    iconType = IconType::Circle; break;
-    case PinType::String:   iconType = IconType::Circle; break;
-    case PinType::Object:   iconType = IconType::Circle; break;
-    case PinType::Function: iconType = IconType::Circle; break;
-    case PinType::Delegate: iconType = IconType::Square; break;
-    default:
-        return;
-    }
-
-    ax::Widgets::Icon(ImVec2(s_PinIconSize, s_PinIconSize), iconType, connected, color, ImColor(32, 32, 32, alpha));
-};
 
 void ShowStyleEditor(bool* show = nullptr)
 {
@@ -1609,10 +1861,32 @@ void Application_Frame()
     {
         auto pin = FindPin(contextPinId);
 
-        ImGui::TextUnformatted("Pin Context Menu");
+        ImGui::TextUnformatted("Connector Information");
         ImGui::Separator();
         if (pin)
         {
+            ImGui::Text("Supported Protocols:");
+            ImGui::Indent();
+            if (pin->Protocols.size() == 0)
+            {
+                ImGui::Text("(None specified)");
+            }
+            else
+            {
+                for (auto supportedProto : pin->Protocols)
+                {
+                    ImGui::Text(magic_enum::enum_name(supportedProto).data());
+                }
+            }
+            ImGui::Unindent();
+            ImGui::Separator();
+            if (pin->ExtraInfo.length() != 0)
+            {
+                ImGui::Text("Extra Info:");
+                ImGui::Separator();
+                ImGui::Text(pin->ExtraInfo.c_str());
+                ImGui::Separator();
+            }
             ImGui::Text("ID: %p", pin->ID.AsPointer());
             if (pin->Node)
                 ImGui::Text("Node: %p", pin->Node->ID.AsPointer());
@@ -1656,6 +1930,8 @@ void Application_Frame()
         Node* node = nullptr;
         if (ImGui::MenuItem("ATEN KVM"))
             node = SpawnATEN_KVM();
+        if (ImGui::MenuItem("USBA to USBB"))
+            node = SpawnUSBAtoUSBB();
         if (ImGui::MenuItem("Input Action"))
             node = SpawnInputActionNode();
         if (ImGui::MenuItem("Output Action"))
